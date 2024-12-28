@@ -29,7 +29,7 @@ fn setup_physics(mut commands: Commands) {
 
     /* Create the bouncing ball. */
     commands.spawn((
-        KeyboardMovable,
+        KeyboardMovable::default(),
         RigidBody::Dynamic,
         Collider::ball(50.0),
         Restitution::coefficient(0.7),
@@ -47,8 +47,11 @@ fn reset_ball(mut positions: Query<(&mut Transform, &mut Velocity), With<RigidBo
     }
 }
 
-fn print_ball_altitude(positions: Query<&Transform, With<RigidBody>>) {
-    for transform in positions.iter() {
-        println!("Ball altitude: {}", transform.translation.y);
+fn print_ball_altitude(positions: Query<(&Transform, &Velocity), With<RigidBody>>) {
+    for (transform, vel) in positions.iter() {
+        println!(
+            "Ball altitude: {} -- Speed: {}",
+            transform.translation, vel.linvel
+        );
     }
 }

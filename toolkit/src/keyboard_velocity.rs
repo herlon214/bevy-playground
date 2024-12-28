@@ -1,12 +1,24 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::Velocity;
 
-const SPEED: f32 = 2_000.0;
-
 pub struct KeyboardMovablePlugin;
 
 #[derive(Component)]
-pub struct KeyboardMovable;
+pub struct KeyboardMovable {
+    speed: f32,
+}
+
+impl KeyboardMovable {
+    pub fn new(speed: f32) -> Self {
+        KeyboardMovable { speed }
+    }
+}
+
+impl Default for KeyboardMovable {
+    fn default() -> Self {
+        KeyboardMovable { speed: 2_500.0 }
+    }
+}
 
 impl Plugin for KeyboardMovablePlugin {
     fn build(&self, app: &mut App) {
@@ -17,7 +29,7 @@ impl Plugin for KeyboardMovablePlugin {
 fn player_movement(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut query_player: Query<&mut Velocity, With<KeyboardMovable>>,
+    mut query_player: Query<(&mut Velocity, &KeyboardMovable)>,
 ) {
     let delta = time.delta_secs();
 
@@ -42,7 +54,7 @@ fn player_movement(
     }
 
     // Apply changes
-    for mut vel in &mut query_player {
-        vel.linvel += direction * SPEED * delta;
+    for (mut vel, mov) in &mut query_player {
+        vel.linvel += direction * mov.speed * delta;
     }
 }
