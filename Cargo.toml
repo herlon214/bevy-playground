@@ -15,4 +15,4 @@ opt-level = 1
 opt-level = 3
 
 [workspace]
-members = ["simple_ball"]
+members = ["simple_ball", "simple_physics", "toolkit"]

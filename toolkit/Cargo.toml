@@ -1,8 +1,8 @@
 [package]
-name = "simple_ball"
+name = "toolkit"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 bevy = "0.15.0"
-toolkit = { path = "../toolkit" }
+bevy_rapier2d = "0.28.0"
