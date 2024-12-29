@@ -1,10 +1,7 @@
 [package]
-name = "bevygame"
+name = "unstable_platform"
 version = "0.1.0"
 edition = "2021"
-
-[dependencies]
-bevy = "0.15.0"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
@@ -14,5 +11,8 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
-[workspace]
-members = ["simple_ball", "simple_physics", "toolkit", "spawn_balls", "unstable_platform"]
+[dependencies]
+bevy = "0.15.0"
+bevy-inspector-egui = "0.28.0"
+bevy_rapier2d = "0.28.0"
+toolkit = { path = "../toolkit" }

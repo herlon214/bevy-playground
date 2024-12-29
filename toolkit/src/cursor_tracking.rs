@@ -1,14 +1,19 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Debug)]
 pub struct CursorPosition(pub Vec2);
 
 pub struct CursorTrackingPlugin;
 
 impl Plugin for CursorTrackingPlugin {
     fn build(&self, app: &mut App) {
+        app.add_systems(Startup, setup);
         app.add_systems(Update, cursor_system);
     }
+}
+
+fn setup(mut commands: Commands) {
+    commands.insert_resource(CursorPosition::default());
 }
 
 fn cursor_system(
@@ -39,6 +44,4 @@ fn cursor_system(
         .unwrap_or_default();
 
     cursor.0 = world_pos;
-
-    println!("World coords: {}/{}", world_pos.x, world_pos.y);
 }
