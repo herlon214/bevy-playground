@@ -1,6 +1,7 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_rapier2d::prelude::*;
 use rand::prelude::*;
+use toolkit::fps_counter::FpsCounterPlugin;
 use toolkit::keyboard_velocity::{KeyboardMovable, KeyboardMovablePlugin};
 
 #[derive(Resource)]
@@ -20,6 +21,7 @@ fn main() {
             enabled: true,
             ball_size: 10.0,
         })
+        .add_plugins(FpsCounterPlugin)
         .add_plugins(DefaultPlugins)
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugins(KeyboardMovablePlugin)
