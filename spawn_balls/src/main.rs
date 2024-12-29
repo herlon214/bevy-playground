@@ -1,6 +1,7 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_rapier2d::prelude::*;
 use rand::prelude::*;
+use toolkit::cursor_tracking::{CursorPosition, CursorTrackingPlugin};
 use toolkit::fps_counter::FpsCounterPlugin;
 use toolkit::keyboard_velocity::{KeyboardMovable, KeyboardMovablePlugin};
 
@@ -14,6 +15,10 @@ pub struct SpawnTimer {
 #[derive(Component)]
 pub struct Lifetime(Timer);
 
+/// Used to help identify our main camera
+#[derive(Component)]
+struct MainCamera;
+
 fn main() {
     App::new()
         .insert_resource(SpawnTimer {
@@ -21,7 +26,9 @@ fn main() {
             enabled: true,
             ball_size: 10.0,
         })
+        .init_resource::<CursorPosition>()
         .add_plugins(FpsCounterPlugin)
+        .add_plugins(CursorTrackingPlugin)
         .add_plugins(DefaultPlugins)
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugins(KeyboardMovablePlugin)
@@ -31,17 +38,23 @@ fn main() {
         .add_systems(Update, spawn_ball)
         .add_systems(Update, despawn_ball)
         .add_systems(Update, toggle_spawn_timer)
-        // .add_systems(Update, print_ball_altitude)
         .run();
 }
 
 fn setup_graphics(mut commands: Commands) {
     // Add a camera so we can see the debug-render.
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, MainCamera));
 }
 
-fn spawn_ball(mut commands: Commands, time: Res<Time>, mut timer: ResMut<SpawnTimer>) {
+fn spawn_ball(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut timer: ResMut<SpawnTimer>,
+    cursor_position: Res<CursorPosition>,
+) {
     let mut rng = thread_rng();
+
+    println!("Cursor position: {:?}", cursor_position.0);
 
     if timer.enabled && timer.timer.tick(time.delta()).just_finished() {
         // Randomize
@@ -57,7 +70,7 @@ fn spawn_ball(mut commands: Commands, time: Res<Time>, mut timer: ResMut<SpawnTi
             RigidBody::Dynamic,
             Collider::ball(size),
             Restitution::coefficient(0.9),
-            Transform::from_xyz(0.0, 0.0, 0.0),
+            Transform::from_xyz(cursor_position.0.x, cursor_position.0.y, 0.0),
             vel,
         ));
     }
