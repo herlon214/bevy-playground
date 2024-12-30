@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
 
+use bevy::audio::Volume;
 use bevy::{prelude::*, window::PrimaryWindow};
+use bevy_asset_loader::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use toolkit::cursor_tracking::{CursorPosition, CursorTrackingPlugin};
@@ -8,7 +10,7 @@ use toolkit::keyboard_rotation::{KeyboardRotationPlugin, Rotatable};
 use toolkit::keyboard_velocity::{KeyboardMovable, KeyboardMovablePlugin};
 
 #[derive(Component)]
-pub struct Platform(Vec2);
+pub struct Platform;
 
 #[derive(Resource)]
 pub struct NatureAtlas {
@@ -25,6 +27,13 @@ fn main() {
         .add_plugins(KeyboardRotationPlugin)
         .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(CursorTrackingPlugin)
+        .init_state::<MyStates>()
+        .add_loading_state(
+            LoadingState::new(MyStates::AssetLoading)
+                .continue_to_state(MyStates::Next)
+                .load_collection::<AudioAssets>(),
+        )
+        .add_systems(OnEnter(MyStates::Next), start_background_audio)
         .add_systems(Startup, setup)
         .add_systems(Update, platform_position)
         .add_systems(Startup, spawn_sprites.after(setup))
@@ -66,7 +75,7 @@ fn setup(
         RigidBody::Dynamic,
         Collider::cuboid(100.0, 10.0), // Example dimensions in meters
         Transform::from_xyz(0.0, 5.0, 0.0), // Initial position in meters
-        Platform(Vec2::new(0.0, 5.0)),
+        Platform,
         Velocity::zero(),
         KeyboardMovable::new(2_000.0),
         Rotatable(0.1),
@@ -125,4 +134,25 @@ fn spawn_on_click(
         commands.spawn(sprite_bundle(nature_atlas.borrow(), 0, cursor_position.0));
         println!("Cursor sprite at {:?}", cursor_position.0);
     }
+}
+
+#[derive(AssetCollection, Resource)]
+struct AudioAssets {
+    #[asset(path = "audio/theme.ogg")]
+    background: Handle<AudioSource>,
+}
+
+/// This system runs in MyStates::Next. Thus, AudioAssets is available as a resource
+/// and the contained handle is done loading.
+fn start_background_audio(mut commands: Commands, audio_assets: Res<AudioAssets>) {
+    let settings = PlaybackSettings::LOOP.with_volume(Volume::new(0.5));
+
+    commands.spawn((AudioPlayer(audio_assets.background.clone()), settings));
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
+enum MyStates {
+    #[default]
+    AssetLoading,
+    Next,
 }
