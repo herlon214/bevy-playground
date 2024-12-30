@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::Velocity;
 
 pub struct KeyboardRotationPlugin;
 
@@ -11,15 +12,11 @@ impl Plugin for KeyboardRotationPlugin {
     }
 }
 
-fn rotate_platform(
-    mut query: Query<(&mut Transform, &Rotatable)>,
-    keys: Res<ButtonInput<KeyCode>>,
-) {
+fn rotate_platform(mut query: Query<(&mut Velocity, &Rotatable)>, keys: Res<ButtonInput<KeyCode>>) {
     if keys.pressed(KeyCode::KeyR) {
-        for (mut transform, Rotatable(speed)) in query.iter_mut() {
-            println!("Rotating platform {}", transform.rotation);
-            // Use radians and rotate around Z axis since we're in 2D
-            transform.rotate_z(*speed);
+        for (mut vel, Rotatable(speed)) in query.iter_mut() {
+            println!("Rotating platform {}", vel.angvel);
+            vel.angvel += *speed;
         }
     }
 }
