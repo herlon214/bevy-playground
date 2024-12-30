@@ -48,6 +48,8 @@ fn main() {
         .add_systems(Update, spawn_player)
         .add_systems(OnEnter(MyStates::Next), on_loaded)
         .add_systems(Update, keyboard_inputs)
+        .add_systems(Update, player_spawn.run_if(on_event::<SpawnPlayer>))
+        .add_systems(Update, on_collision.run_if(on_event::<CollisionStarted>))
         // .add_systems(Update, spawn_on_click.run_if(in_state(MyStates::Next)))
         .run();
 }
@@ -89,6 +91,18 @@ fn on_loaded(mut events: EventWriter<SpawnPlayer>) {
 fn keyboard_inputs(keys: Res<ButtonInput<KeyCode>>, mut spawn_evt: EventWriter<SpawnPlayer>) {
     if keys.pressed(KeyCode::Space) {
         spawn_evt.send(SpawnPlayer(Vec2::new(0.0, 0.0)));
+    }
+}
+
+fn on_collision(mut event: EventReader<CollisionStarted>) {
+    for evt in event.read() {
+        info!("Collision event: {:?}", evt);
+    }
+}
+
+fn player_spawn(mut event: EventReader<SpawnPlayer>) {
+    for evt in event.read() {
+        info!("Spawned player at {:?}", evt.0);
     }
 }
 
