@@ -1,5 +1,6 @@
 mod keyboard_rotation;
 mod keyboard_velocity;
+mod tile_grid;
 
 use avian2d::{debug_render::PhysicsDebugPlugin, math::*, prelude::*};
 use bevy::audio::Volume;
@@ -9,8 +10,8 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use keyboard_rotation::{KeyboardRotationPlugin, Rotatable};
 use keyboard_velocity::{KeyboardMovable, KeyboardMovablePlugin};
 use rand::{self, Rng};
+use tile_grid::{Grid, TileGridPlugin};
 use toolkit::cursor_tracking::{CursorPosition, CursorTrackingPlugin};
-use toolkit::fps_counter::FpsCounterPlugin;
 
 fn main() {
     App::new()
@@ -26,13 +27,14 @@ fn main() {
             },
             GizmoConfig::default(),
         )
+        .add_plugins(TileGridPlugin)
         .add_plugins(KeyboardMovablePlugin)
-        .add_plugins(FpsCounterPlugin)
         .add_plugins(KeyboardRotationPlugin)
         .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(CursorTrackingPlugin)
         .init_state::<MyStates>()
         .add_event::<SpawnPlayer>()
+        .add_event::<GridClicked>()
         .insert_resource(Gravity(Vector::NEG_Y * 9.81 * 100.0))
         .add_loading_state(
             LoadingState::new(MyStates::AssetLoading)
@@ -50,8 +52,33 @@ fn main() {
         .add_systems(Update, keyboard_inputs)
         .add_systems(Update, player_spawn.run_if(on_event::<SpawnPlayer>))
         .add_systems(Update, on_collision.run_if(on_event::<CollisionStarted>))
+        .add_systems(Startup, screen_grid)
+        .add_systems(Update, render_rays)
         // .add_systems(Update, spawn_on_click.run_if(in_state(MyStates::Next)))
         .run();
+}
+
+fn screen_grid(mut commands: Commands, windows: Query<&Window, With<PrimaryWindow>>) {
+    let window = windows.single();
+
+    let mut rng = rand::thread_rng();
+
+    // Create grids
+    let grid_size = 64;
+    let width = (window.width() / 2.0) as i32;
+    let height = (window.height() / 2.0) as i32;
+    for x in (-width..width).step_by(grid_size) {
+        for y in (-height..height).step_by(grid_size) {
+            commands.spawn((
+                Transform::from_xyz(x as f32, y as f32, 0.0),
+                Grid,
+                Sprite::from_color(
+                    Color::hsla(rng.gen_range(0.0..360.0), 1.0, 0.5, 0.1),
+                    Vec2::new(grid_size as f32, grid_size as f32),
+                ),
+            ));
+        }
+    }
 }
 
 fn despawn_out_of_screen(
@@ -95,9 +122,9 @@ fn keyboard_inputs(keys: Res<ButtonInput<KeyCode>>, mut spawn_evt: EventWriter<S
 }
 
 fn on_collision(mut event: EventReader<CollisionStarted>) {
-    for evt in event.read() {
-        info!("Collision event: {:?}", evt);
-    }
+    // for evt in event.read() {
+    // info!("Collision event: {:?}", evt);
+    // }
 }
 
 fn player_spawn(mut event: EventReader<SpawnPlayer>) {
@@ -128,6 +155,7 @@ fn spawn_player(
                 KeyboardMovable::new(2_000.0),
                 Rotatable(30.0),
                 Visibility::default(),
+                RayCaster::new(Vector::ZERO, Dir2::X),
             ))
             .with_children(|parent| {
                 parent.spawn(Sprite::from_image(sprite_assets.bone.clone()));
@@ -228,3 +256,25 @@ enum MyStates {
 
 #[derive(Event)]
 struct SpawnPlayer(Vec2);
+
+fn render_rays(mut rays: Query<(&mut RayCaster, &mut RayHits)>, mut gizmos: Gizmos) {
+    for (ray, hits) in &mut rays {
+        // Convert to Vec3 for lines
+        let origin = ray.global_origin().f32();
+        let direction = ray.global_direction().f32();
+
+        for hit in hits.iter() {
+            gizmos.line_2d(
+                origin,
+                origin + direction * hit.distance as f32,
+                Color::WHITE,
+            );
+        }
+        if hits.is_empty() {
+            gizmos.line_2d(origin, origin + direction * 1_000_000.0, Color::BLACK);
+        }
+    }
+}
+
+#[derive(Event)]
+struct GridClicked(Entity);
