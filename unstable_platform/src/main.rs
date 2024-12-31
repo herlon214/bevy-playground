@@ -34,7 +34,6 @@ fn main() {
         .add_plugins(CursorTrackingPlugin)
         .init_state::<MyStates>()
         .add_event::<SpawnPlayer>()
-        .add_event::<GridClicked>()
         .insert_resource(Gravity(Vector::NEG_Y * 9.81 * 100.0))
         .add_loading_state(
             LoadingState::new(MyStates::AssetLoading)
@@ -54,6 +53,7 @@ fn main() {
         .add_systems(Update, on_collision.run_if(on_event::<CollisionStarted>))
         .add_systems(Startup, screen_grid)
         .add_systems(Update, render_rays)
+        .add_systems(Update, camera_follow_player)
         // .add_systems(Update, spawn_on_click.run_if(in_state(MyStates::Next)))
         .run();
 }
@@ -81,22 +81,40 @@ fn screen_grid(mut commands: Commands, windows: Query<&Window, With<PrimaryWindo
     }
 }
 
+fn camera_follow_player(
+    mut camera: Query<&mut Transform, (With<Camera2d>, Without<Player>)>,
+    player: Query<&Transform, With<Player>>,
+) {
+    let mut camera = camera.single_mut();
+
+    // Player is not always present, so we need to check if it exists
+    if let Ok(player) = player.get_single() {
+        camera.translation = camera.translation.lerp(player.translation, 0.1);
+    }
+}
+
 fn despawn_out_of_screen(
     mut commands: Commands,
-    query: Query<(Entity, &Transform)>,
+    query: Query<(Entity, &Transform), With<Despawnable>>,
+    camera: Query<&Transform, With<Camera2d>>,
     windows: Query<&Window, With<PrimaryWindow>>,
 ) {
     let window = windows.single();
+    let camera_transform = camera.single();
     let threshold = 100.0;
     let width = window.width() / 2.0;
     let height = window.height() / 2.0;
 
+    // Calculate camera-relative bounds
+    let camera_pos = camera_transform.translation.truncate();
+    let min_x = camera_pos.x - width - threshold;
+    let max_x = camera_pos.x + width + threshold;
+    let min_y = camera_pos.y - height - threshold;
+    let max_y = camera_pos.y + height + threshold;
+
     for (entity, transform) in query.iter() {
-        if transform.translation.x > width + threshold
-            || transform.translation.x < -width - threshold
-            || transform.translation.y > height + threshold
-            || transform.translation.y < -height - threshold
-        {
+        let pos = transform.translation;
+        if pos.x > max_x || pos.x < min_x || pos.y > max_y || pos.y < min_y {
             commands.entity(entity).despawn_recursive();
             info!(
                 "Despawned entity {} at {:?}",
@@ -150,16 +168,17 @@ fn spawn_player(
             .spawn((
                 Transform::from_xyz(pos.x, pos.y, 0.0).with_scale(Vec3::splat(3.0)),
                 RigidBody::Dynamic,
-                Collider::rectangle(32.0, 32.0), // Example dimensions in meters
+                Collider::capsule(3.0, 32.0),
                 LinearVelocity::ZERO,
                 KeyboardMovable::new(2_000.0),
                 Rotatable(30.0),
                 Visibility::default(),
                 RayCaster::new(Vector::ZERO, Dir2::X),
+                Player,
+                Despawnable,
             ))
             .with_children(|parent| {
                 parent.spawn(Sprite::from_image(sprite_assets.bone.clone()));
-                parent.spawn(Sprite::from_image(sprite_assets.something.clone()));
             });
 
         debug!("Spawned player at {:?}", pos);
@@ -276,5 +295,8 @@ fn render_rays(mut rays: Query<(&mut RayCaster, &mut RayHits)>, mut gizmos: Gizm
     }
 }
 
-#[derive(Event)]
-struct GridClicked(Entity);
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct Despawnable;
