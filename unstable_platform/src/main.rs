@@ -217,7 +217,7 @@ fn spawn_player_collision(
             CameraTarget,
             KeyboardMovable::new(200.0),
             RigidBody::Dynamic,
-            GravityScale(3.0),
+            GravityScale(3.5),
             Damping {
                 linear_damping: 10.0,
                 angular_damping: 10.0,
@@ -243,6 +243,7 @@ pub fn spawn_wall_collision(
             Collider::cuboid(8.0, 8.0),
             RigidBody::Fixed,
             Friction::new(0.0),
+            Ccd::enabled(),
         ));
     }
 }
