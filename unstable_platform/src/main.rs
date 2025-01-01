@@ -1,5 +1,5 @@
-mod character_controller;
-mod keyboard_velocity;
+mod camera;
+mod character;
 
 use bevy::audio::Volume;
 use bevy::{prelude::*, window::PrimaryWindow};
@@ -7,10 +7,11 @@ use bevy_asset_loader::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
+use camera::CameraPlugin;
+use character::controller_kinematic::KinematicControllerPlugin;
+use character::controller_velocity::{VelocityCharacterController, VelocityControllerPlugin};
+use character::Character;
 use rand::{self, Rng};
-
-use character_controller::CharacterControllerPlugin;
-use keyboard_velocity::{KeyboardMovable, KeyboardMovablePlugin};
 
 const GRID_SIZE: i32 = 16;
 
@@ -26,9 +27,10 @@ fn main() {
             ..default()
         })
         .add_plugins(LdtkPlugin)
-        .add_plugins(CharacterControllerPlugin)
+        .add_plugins(KinematicControllerPlugin)
+        .add_plugins(VelocityControllerPlugin)
+        .add_plugins(CameraPlugin)
         .init_state::<MyStates>()
-        .add_event::<SpawnPlayer>()
         .register_ldtk_entity::<PlayerBundle>("Player")
         .register_ldtk_entity::<GoalBundle>("Goal")
         .register_ldtk_int_cell::<WallBundle>(1)
@@ -39,91 +41,17 @@ fn main() {
                 .load_collection::<AudioAssets>()
                 .load_collection::<SpriteAssets>(),
         )
-        .add_systems(Update, (spawn_wall_collision, spawn_player_collision))
+        .add_systems(Update, spawn_wall_collision)
         .add_systems(OnEnter(MyStates::Next), start_background_audio)
         .add_systems(Startup, setup)
         // .add_systems(
         //     FixedUpdate,
         //     apply_controls.in_set(TnuaUserControlsSystemSet),
         // )
-        .add_systems(Update, camera_follow_player)
         .run();
 }
 
-fn camera_follow_player(
-    time: Res<Time>,
-    mut camera: Query<&mut Transform, (With<Camera2d>, Without<CameraTarget>)>,
-    target: Query<&Transform, With<CameraTarget>>,
-) {
-    let mut camera_transform = camera.single_mut();
-
-    if let Ok(player_transform) = target.get_single() {
-        // Define a smaller deadzone where camera won't respond to tiny movements
-        let deadzone = 10.0;
-
-        // Calculate the target position (centered on player)
-        let target_pos = player_transform.translation;
-
-        // Calculate distance from camera to target
-        let distance = target_pos - camera_transform.translation;
-
-        // Only move if we're outside the deadzone
-        if distance.length() > deadzone {
-            // Smooth camera movement using delta time
-            let lerp_speed = 5.0;
-            let lerp_factor = (1.0 - (-lerp_speed * time.delta_secs()).exp()).min(1.0);
-
-            camera_transform.translation =
-                camera_transform.translation.lerp(target_pos, lerp_factor);
-        }
-    }
-}
-
-fn despawn_out_of_screen(
-    mut commands: Commands,
-    query: Query<(Entity, &Transform), With<Despawnable>>,
-    camera: Query<&Transform, With<Camera2d>>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-) {
-    let window = windows.single();
-    let camera_transform = camera.single();
-    let threshold = 100.0;
-    let width = window.width() / 2.0;
-    let height = window.height() / 2.0;
-
-    // Calculate camera-relative bounds
-    let camera_pos = camera_transform.translation.truncate();
-    let min_x = camera_pos.x - width - threshold;
-    let max_x = camera_pos.x + width + threshold;
-    let min_y = camera_pos.y - height - threshold;
-    let max_y = camera_pos.y + height + threshold;
-
-    for (entity, transform) in query.iter() {
-        let pos = transform.translation;
-        if pos.x > max_x || pos.x < min_x || pos.y > max_y || pos.y < min_y {
-            commands.entity(entity).despawn_recursive();
-            info!(
-                "Despawned entity {} at {:?}",
-                entity.index(),
-                transform.translation
-            );
-        }
-    }
-}
-
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // commands.spawn(Camera2d);
-    commands.spawn((
-        Camera2d,
-        OrthographicProjection {
-            scale: 0.4,
-            far: 1000.0,
-            near: -1000.0,
-            ..OrthographicProjection::default_2d()
-        },
-        Transform::from_xyz(1280.0 / 4.0, 720.0 / 4.0, 0.0),
-    ));
-
     commands.spawn(LdtkWorldBundle {
         ldtk_handle: asset_server.load("test.ldtk").into(),
         ..Default::default()
@@ -140,7 +68,7 @@ struct AudioAssets {
 struct SpriteAssets {
     #[asset(texture_atlas_layout(tile_size_x = 16, tile_size_y = 16, columns = 7, rows = 12))]
     layout: Handle<TextureAtlasLayout>,
-    #[asset(path = "tileset/nature-paltformer-tileset-16x16.png")]
+    #[asset(path = "tileset/nature-platformer-tileset-16x16.png")]
     sprite: Handle<Image>,
 
     #[asset(path = "tinyswords/Deco/14.png")]
@@ -165,18 +93,9 @@ enum MyStates {
     Next,
 }
 
-#[derive(Event)]
-struct SpawnPlayer(Vec2);
-
-#[derive(Component, Default)]
-struct Player;
-
-#[derive(Component)]
-struct Despawnable;
-
 #[derive(Default, Bundle, LdtkEntity)]
 struct PlayerBundle {
-    player: Player,
+    player: Character,
     #[sprite_sheet]
     sprite_sheet: Sprite,
     #[grid_coords]
@@ -187,53 +106,6 @@ struct PlayerBundle {
 struct GoalBundle {
     #[sprite_sheet]
     sprite_sheet: Sprite,
-}
-
-fn translate_grid_coords_entities(
-    mut grid_coords_entities: Query<(&mut Transform, &GridCoords), Changed<GridCoords>>,
-) {
-    for (mut transform, grid_coords) in grid_coords_entities.iter_mut() {
-        transform.translation =
-            bevy_ecs_ldtk::utils::grid_coords_to_translation(*grid_coords, IVec2::splat(GRID_SIZE))
-                .extend(transform.translation.z);
-    }
-}
-
-fn spawn_player_collision(
-    mut commands: Commands,
-    mut player_query: Query<
-        (Entity, &mut Transform),
-        (Added<Player>, With<GridCoords>, Without<RigidBody>),
-    >,
-) {
-    if let Ok((entity, mut transform)) = player_query.get_single_mut() {
-        println!("Spawned player collision at {:?}", transform);
-
-        // Update transform Z to be in front of the camera
-        transform.translation.z = 1.0;
-
-        commands.entity(entity).insert((
-            Collider::capsule(Vec2::new(0.0, -8.0), Vec2::new(0.0, 0.0), 8.0),
-            // Velocity::zero(),
-            LockedAxes::ROTATION_LOCKED,
-            CameraTarget,
-            Velocity {
-                linvel: Vec2::new(1.0, 0.0),
-                angvel: 0.0,
-            },
-            // KeyboardMovable::new(200.0),
-            // RigidBody::Dynamic,
-            // GravityScale(3.5),
-            // Damping {
-            //     linear_damping: 10.0,
-            //     angular_damping: 10.0,
-            // },
-            // Friction::new(0.0),
-            // Ccd::enabled(),
-            KinematicCharacterController::default(),
-            ActiveEvents::COLLISION_EVENTS,
-        ));
-    }
 }
 
 pub fn spawn_wall_collision(
@@ -270,6 +142,3 @@ pub struct Platform;
 pub struct PlatformBundle {
     platform: Platform,
 }
-
-#[derive(Component)]
-struct CameraTarget;

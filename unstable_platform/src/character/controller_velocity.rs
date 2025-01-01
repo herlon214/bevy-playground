@@ -1,36 +1,39 @@
+use crate::camera::CameraTarget;
+use crate::character::Character;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-pub struct KeyboardMovablePlugin;
+pub struct VelocityControllerPlugin;
 
 #[derive(Component)]
-pub struct KeyboardMovable {
+pub struct VelocityCharacterController {
     speed: f32,
 }
 
-impl KeyboardMovable {
+impl VelocityCharacterController {
     pub fn new(speed: f32) -> Self {
-        KeyboardMovable { speed }
+        VelocityCharacterController { speed }
     }
 }
 
-impl Default for KeyboardMovable {
+impl Default for VelocityCharacterController {
     fn default() -> Self {
-        KeyboardMovable { speed: 2_500.0 }
+        VelocityCharacterController { speed: 2_500.0 }
     }
 }
 
-impl Plugin for KeyboardMovablePlugin {
+impl Plugin for VelocityControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(FixedUpdate, player_movement);
         app.add_systems(FixedUpdate, jump);
         app.add_systems(Update, display_events);
+        app.add_systems(Update, on_add_character);
     }
 }
 
 fn jump(
     keys: Res<ButtonInput<KeyCode>>,
-    mut query_player: Query<&mut Velocity, With<KeyboardMovable>>,
+    mut query_player: Query<&mut Velocity, With<VelocityCharacterController>>,
 ) {
     if keys.just_pressed(KeyCode::KeyW)
         || keys.just_pressed(KeyCode::ArrowUp)
@@ -44,7 +47,7 @@ fn jump(
 
 fn player_movement(
     keys: Res<ButtonInput<KeyCode>>,
-    mut query_player: Query<(&mut Velocity, &KeyboardMovable)>,
+    mut query_player: Query<(&mut Velocity, &VelocityCharacterController)>,
 ) {
     let mut direction = Vec2::new(0.0, 0.0);
 
@@ -83,5 +86,27 @@ fn display_events(
 
     for contact_force_event in contact_force_events.read() {
         println!("Received contact force event: {:?}", contact_force_event);
+    }
+}
+
+fn on_add_character(mut commands: Commands, query: Query<Entity, Added<Character>>) {
+    if let Ok(entity) = query.get_single() {
+        commands.entity(entity).insert((
+            Collider::capsule(Vec2::new(0.0, -8.0), Vec2::new(0.0, 0.0), 8.0),
+            Velocity::zero(),
+            LockedAxes::ROTATION_LOCKED,
+            CameraTarget,
+            VelocityCharacterController::new(200.0),
+            RigidBody::Dynamic,
+            GravityScale(3.5),
+            Damping {
+                linear_damping: 10.0,
+                angular_damping: 10.0,
+            },
+            Friction::new(0.0),
+            Ccd::enabled(),
+            // KinematicCharacterController::default(),
+            ActiveEvents::COLLISION_EVENTS,
+        ));
     }
 }

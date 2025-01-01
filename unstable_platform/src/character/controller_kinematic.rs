@@ -11,9 +11,9 @@ pub struct Grounded;
 #[derive(Component)]
 pub struct DoubleJump;
 
-pub struct CharacterControllerPlugin;
+pub struct KinematicControllerPlugin;
 
-impl Plugin for CharacterControllerPlugin {
+impl Plugin for KinematicControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
