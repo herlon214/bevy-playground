@@ -6,9 +6,9 @@ use bevy_asset_loader::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
-use bevy_rapier2d::rapier::prelude::RigidBodyBuilder;
-use keyboard_velocity::{KeyboardMovable, KeyboardMovablePlugin};
 use rand::{self, Rng};
+
+use keyboard_velocity::{KeyboardMovable, KeyboardMovablePlugin};
 
 const GRID_SIZE: i32 = 16;
 
@@ -224,6 +224,7 @@ fn spawn_player_collision(
             },
             Friction::new(0.0),
             Ccd::enabled(),
+            ActiveEvents::COLLISION_EVENTS,
         ));
     }
 }
