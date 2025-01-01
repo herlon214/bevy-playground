@@ -217,6 +217,10 @@ fn spawn_player_collision(
             // Velocity::zero(),
             LockedAxes::ROTATION_LOCKED,
             CameraTarget,
+            Velocity {
+                linvel: Vec2::new(1.0, 0.0),
+                angvel: 0.0,
+            },
             // KeyboardMovable::new(200.0),
             // RigidBody::Dynamic,
             // GravityScale(3.5),

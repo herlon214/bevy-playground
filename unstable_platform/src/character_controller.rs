@@ -2,11 +2,14 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 const GRAVITY: f32 = 98.1;
-const JUMP_FORCE: f32 = GRAVITY * 20.0;
-const MOVE_SPEED: f32 = GRAVITY * 5.0;
+const JUMP_FORCE: f32 = 4_000.0;
+const MOVE_SPEED: f32 = 200.0;
 
 #[derive(Component)]
 pub struct Grounded;
+
+#[derive(Component)]
+pub struct DoubleJump;
 
 pub struct CharacterControllerPlugin;
 
@@ -33,6 +36,7 @@ fn add_grounded(
     if let Ok((entity, controller)) = query.get_single() {
         if controller.grounded || controller.effective_translation.y.abs() < 0.01 {
             commands.entity(entity).insert(Grounded);
+            commands.entity(entity).remove::<DoubleJump>();
             println!("Grounded");
         }
     }
@@ -71,21 +75,51 @@ fn read_kineamtic_controller(controllers: Query<(Entity, &KinematicCharacterCont
 }
 
 fn jump(
+    mut commands: Commands,
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut controllers: Query<&mut KinematicCharacterController, With<Grounded>>,
+    mut controllers: Query<
+        (Entity, &mut KinematicCharacterController, Option<&Grounded>),
+        Without<DoubleJump>,
+    >,
 ) {
+    let mut direction = Vec2::ZERO;
+
     if keys.just_pressed(KeyCode::KeyW)
         || keys.just_pressed(KeyCode::ArrowUp)
         || keys.just_pressed(KeyCode::Space)
     {
-        for mut controller in controllers.iter_mut() {
-            let jump_vector = Vec2::new(0.0, JUMP_FORCE * time.delta_secs());
-            controller.translation = match controller.translation {
-                Some(translation) => Some(translation + jump_vector),
-                None => Some(jump_vector),
-            };
-            println!("Jumped");
+        direction += Vec2::new(0.0, 1.0);
+    }
+
+    if direction.length() == 0.0 {
+        return;
+    }
+
+    // Check is moving forward or backward
+    if keys.pressed(KeyCode::KeyD) {
+        direction += Vec2::new(1.0, 0.0);
+    }
+
+    if keys.pressed(KeyCode::KeyA) {
+        direction += Vec2::new(-1.0, 0.0);
+    }
+
+    // Normalize the direction
+    direction = direction.normalize() * JUMP_FORCE * time.delta_secs();
+
+    for (entity, mut controller, grounded) in controllers.iter_mut() {
+        let jump_vector = direction;
+        controller.translation = match controller.translation {
+            Some(translation) => Some(translation + jump_vector),
+            None => Some(jump_vector),
+        };
+
+        if grounded.is_none() {
+            commands.entity(entity).insert(DoubleJump);
+            println!("Double Jump");
+        } else {
+            println!("Single Jump");
         }
     }
 }
@@ -113,7 +147,7 @@ fn player_movement(
     for (mut controller, grounded) in controllers.iter_mut() {
         // Reduce horizontal speed when in air
         if grounded.is_none() {
-            direction.x *= 0.4;
+            direction.x *= 0.8;
         }
 
         // Changed to preserve any existing translation (like jump force)
