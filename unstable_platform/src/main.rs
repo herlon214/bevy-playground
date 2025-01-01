@@ -53,7 +53,7 @@ fn main() {
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(LdtkWorldBundle {
-        ldtk_handle: asset_server.load("test.ldtk").into(),
+        ldtk_handle: asset_server.load("gridvania.ldtk").into(),
         ..Default::default()
     });
 }
