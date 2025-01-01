@@ -1,5 +1,5 @@
-use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 
 pub struct KeyboardMovablePlugin;
 
@@ -23,13 +23,29 @@ impl Default for KeyboardMovable {
 impl Plugin for KeyboardMovablePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, player_movement);
+        app.add_systems(Update, jump);
+    }
+}
+
+fn jump(
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut query_player: Query<(&mut Velocity, &KeyboardMovable)>,
+) {
+    if keys.just_pressed(KeyCode::KeyW)
+        || keys.just_pressed(KeyCode::ArrowUp)
+        || keys.just_pressed(KeyCode::Space)
+    {
+        if let Ok((mut vel, mov)) = query_player.get_single_mut() {
+            vel.linvel.y = 1_000.0;
+        }
     }
 }
 
 fn player_movement(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut query_player: Query<(&mut LinearVelocity, &KeyboardMovable)>,
+    mut query_player: Query<(&mut Velocity, &KeyboardMovable)>,
 ) {
     let delta = time.delta_secs();
 
@@ -41,20 +57,16 @@ fn player_movement(
     if keys.pressed(KeyCode::KeyD) {
         direction += Vec2::new(1.0, 0.0);
     }
-    if keys.pressed(KeyCode::KeyW) {
-        direction += Vec2::new(0.0, 1.0);
-    }
-    if keys.pressed(KeyCode::KeyS) {
-        direction += Vec2::new(0.0, -1.0);
+    if direction.length() == 0.0 {
+        return;
     }
 
     // Normalize
-    if direction.length() > 0.0 {
-        direction = direction.normalize();
-    }
+    direction = direction.normalize();
 
     // Apply changes
-    for (mut vel, mov) in &mut query_player {
-        vel.0 += direction * mov.speed * delta;
+    if let Ok((mut vel, mov)) = query_player.get_single_mut() {
+        vel.linvel.x = (direction.x * mov.speed);
+        println!("Applying velocity {:?}", vel.linvel);
     }
 }
