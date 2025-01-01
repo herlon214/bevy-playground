@@ -1,3 +1,4 @@
+mod character_controller;
 mod keyboard_velocity;
 
 use bevy::audio::Volume;
@@ -8,6 +9,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use rand::{self, Rng};
 
+use character_controller::CharacterControllerPlugin;
 use keyboard_velocity::{KeyboardMovable, KeyboardMovablePlugin};
 
 const GRID_SIZE: i32 = 16;
@@ -24,7 +26,7 @@ fn main() {
             ..default()
         })
         .add_plugins(LdtkPlugin)
-        .add_plugins(KeyboardMovablePlugin)
+        .add_plugins(CharacterControllerPlugin)
         .init_state::<MyStates>()
         .add_event::<SpawnPlayer>()
         .register_ldtk_entity::<PlayerBundle>("Player")
@@ -211,19 +213,20 @@ fn spawn_player_collision(
         transform.translation.z = 1.0;
 
         commands.entity(entity).insert((
-            Collider::capsule(Vec2::new(0.0, -8.0), Vec2::new(0.0, 8.0), 8.0),
-            Velocity::zero(),
+            Collider::capsule(Vec2::new(0.0, -8.0), Vec2::new(0.0, 0.0), 8.0),
+            // Velocity::zero(),
             LockedAxes::ROTATION_LOCKED,
             CameraTarget,
-            KeyboardMovable::new(200.0),
-            RigidBody::Dynamic,
-            GravityScale(3.5),
-            Damping {
-                linear_damping: 10.0,
-                angular_damping: 10.0,
-            },
-            Friction::new(0.0),
-            Ccd::enabled(),
+            // KeyboardMovable::new(200.0),
+            // RigidBody::Dynamic,
+            // GravityScale(3.5),
+            // Damping {
+            //     linear_damping: 10.0,
+            //     angular_damping: 10.0,
+            // },
+            // Friction::new(0.0),
+            // Ccd::enabled(),
+            KinematicCharacterController::default(),
             ActiveEvents::COLLISION_EVENTS,
         ));
     }
@@ -244,7 +247,6 @@ pub fn spawn_wall_collision(
             Collider::cuboid(8.0, 8.0),
             RigidBody::Fixed,
             Friction::new(0.0),
-            Ccd::enabled(),
         ));
     }
 }
