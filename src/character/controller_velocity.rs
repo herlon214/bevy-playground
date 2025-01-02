@@ -98,7 +98,7 @@ fn on_add_character(mut commands: Commands, query: Query<Entity, Added<Character
             CameraTarget,
             VelocityCharacterController::new(200.0),
             RigidBody::Dynamic,
-            GravityScale(3.5),
+            // GravityScale(3.5),
             Damping {
                 linear_damping: 10.0,
                 angular_damping: 10.0,

@@ -1,5 +1,6 @@
 mod camera;
 mod character;
+mod level;
 
 use bevy::audio::Volume;
 use bevy::{prelude::*, window::PrimaryWindow};
@@ -11,9 +12,8 @@ use camera::CameraPlugin;
 use character::controller_kinematic::KinematicControllerPlugin;
 use character::controller_velocity::{VelocityCharacterController, VelocityControllerPlugin};
 use character::Character;
+use level::LevelPlugin;
 use rand::{self, Rng};
-
-const GRID_SIZE: i32 = 16;
 
 fn main() {
     App::new()
@@ -27,6 +27,7 @@ fn main() {
             ..default()
         })
         .add_plugins(LdtkPlugin)
+        .add_plugins(LevelPlugin)
         .add_plugins(KinematicControllerPlugin)
         .add_plugins(VelocityControllerPlugin)
         .add_plugins(CameraPlugin)
