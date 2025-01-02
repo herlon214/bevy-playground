@@ -68,13 +68,9 @@ fn camera_follow_player(
     if let Ok(player_transform) = target.get_single() {
         let deadzone = 10.0;
 
-        println!("Camera position: {}", camera_transform.translation.x);
-
         // Adjust the level boundaries to account for camera view
         let camera_min_x = level_min_x + (px_wid * 12.0);
         let camera_max_x = level_max_x - (px_wid * 12.0);
-
-        println!("Camera bounds: {} to {}", camera_min_x, camera_max_x);
 
         // Center the player by removing the x-offset and maintaining y position
         let target_pos = Vec3::new(
