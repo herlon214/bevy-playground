@@ -72,21 +72,21 @@ fn display_events(
     mut collision_events: EventReader<CollisionEvent>,
     mut contact_force_events: EventReader<ContactForceEvent>,
 ) {
-    for collision_event in collision_events.read() {
-        println!("Received collision event: {:?}", collision_event);
-        match collision_event {
-            CollisionEvent::Started(lhs, rhs, flags) => {
-                println!("Collision started: {:?} {:?} {:?}", lhs, rhs, flags);
-            }
-            CollisionEvent::Stopped(lhs, rhs, flags) => {
-                println!("Collision stopped: {:?} {:?} {:?}", lhs, rhs, flags);
-            }
-        }
-    }
+    // for collision_event in collision_events.read() {
+    //     println!("Received collision event: {:?}", collision_event);
+    //     match collision_event {
+    //         CollisionEvent::Started(lhs, rhs, flags) => {
+    //             println!("Collision started: {:?} {:?} {:?}", lhs, rhs, flags);
+    //         }
+    //         CollisionEvent::Stopped(lhs, rhs, flags) => {
+    //             println!("Collision stopped: {:?} {:?} {:?}", lhs, rhs, flags);
+    //         }
+    //     }
+    // }
 
-    for contact_force_event in contact_force_events.read() {
-        println!("Received contact force event: {:?}", contact_force_event);
-    }
+    // for contact_force_event in contact_force_events.read() {
+    //     println!("Received contact force event: {:?}", contact_force_event);
+    // }
 }
 
 fn on_add_character(mut commands: Commands, query: Query<Entity, Added<Character>>) {
@@ -105,7 +105,6 @@ fn on_add_character(mut commands: Commands, query: Query<Entity, Added<Character
             },
             Friction::new(0.0),
             Ccd::enabled(),
-            // KinematicCharacterController::default(),
             ActiveEvents::COLLISION_EVENTS,
         ));
     }
